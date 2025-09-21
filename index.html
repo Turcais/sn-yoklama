@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yoklama Sistemi</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(to right, #f9f9f9, #e0f7fa);
+    text-align: center;
+    padding: 50px 20px;
+  }
+  h1 {
+    color: #00796b;
+    margin-bottom: 40px;
+  }
+  form {
+    background: #ffffffcc;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    max-width: 400px;
+    margin: 0 auto;
+    display: none;
+  }
+  input, button {
+    width: 90%;
+    padding: 12px;
+    margin-top: 15px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+  }
+  button {
+    background-color: #00796b;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  button:hover {
+    background-color: #004d40;
+  }
+  #status {
+    margin-top: 30px;
+    font-weight: bold;
+    font-size: 18px;
+    color: #00796b;
+  }
+</style>
+</head>
+<body>
+<h1>Yoklama Sistemi</h1>
+
+<form id="registerForm">
+  <input type="text" id="name" placeholder="Ad Soyad" required>
+  <input type="email" id="email" placeholder="E-posta" required>
+  <input type="text" id="phone" placeholder="Telefon" required>
+  <button type="submit">Kaydet ve Yoklamayı Al</button>
+</form>
+
+<p id="status">Kontrol ediliyor...</p>
+
+<script>
+const API_URL = "https://yoklama-peach.vercel.app/api/yoklama";
+
+function getUUID() {
+  let uuid = localStorage.getItem("device_uuid");
+  if (!uuid) {
+    uuid = (crypto.randomUUID) ? crypto.randomUUID() :
+      'xxxx-xxxx-4xxx-yxxx-xxxx'.replace(/[xy]/g,function(c){
+        var r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);
+      });
+    localStorage.setItem("device_uuid", uuid);
+  }
+  return uuid;
+}
+
+async function sendAttendance(data) {
+  const statusEl = document.getElementById('status');
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(data)
+    });
+
+    // Body'yi tek seferde oku
+    const text = await res.text();
+
+    let json;
+    try {
+      json = JSON.parse(text); // JSON parse
+    } catch(err) {
+      console.log("Fallback text:", text);
+      statusEl.innerText = "Yoklama kaydı alındı ✅";
+      return;
+    }
+
+    statusEl.innerText = json.message || "Yoklama kaydı alındı ✅";
+
+  } catch(err) {
+    console.error(err);
+    statusEl.innerText = "Hata oluştu ❌";
+  }
+}
+
+
+
+window.onload = () => {
+  const uuid = getUUID();
+  const form = document.getElementById('registerForm');
+
+  if (!localStorage.getItem("hasRegistered")) {
+    form.style.display = "block";
+    document.getElementById('status').innerText = "Lütfen kayıt olun";
+  } else {
+    sendAttendance({uuid});
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+
+    await sendAttendance({uuid, name, email, phone});
+    localStorage.setItem("hasRegistered", "true");
+    form.style.display = "none";
+  });
+};
+</script>
+</body>
+</html>
+
+
